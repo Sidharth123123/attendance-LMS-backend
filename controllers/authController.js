@@ -5,6 +5,10 @@ const sendEmail = require('../utils/sendEmail');
 const Profile = require('../models/Profile');
 const mongoose = require('mongoose');
 const Attendance = require("../models/Attendance");
+const Leave = require('../models/Leave');
+const Empleave = require("../models/Empleave");
+const BreakTime = require("../models/BreakTime");
+
 
 
 
@@ -55,29 +59,28 @@ exports.signup = async (req, res) => {
 
 
 
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
+// exports.login = async (req, res) => {
+//   const { email, password } = req.body;
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     user.otp = otp;
+//     await user.save();
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.otp = otp;
-    await user.save();
+//     await sendEmail(email, 'Your OTP Code', `Your OTP is: ${otp}`);
 
-    await sendEmail(email, 'Your OTP Code', `Your OTP is: ${otp}`);
+//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-    res.json({ message: 'OTP sent to email', token });
-  } catch (err) {
-    res.status(500).json({ message: 'Login failed', error: err.message });
-  }
-};
+//     res.json({ message: 'OTP sent to email', token });
+//   } catch (err) {
+//     res.status(500).json({ message: 'Login failed', error: err.message });
+//   }
+// };
 
 
 
@@ -105,34 +108,153 @@ exports.login = async (req, res) => {
 
 
 
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(400).json({ message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    await user.save();
+
+    await sendEmail(email, "Your OTP Code", `Your OTP is: ${otp}`);
+
+    // Token with role
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "OTP sent to email",
+      token,
+      role: user.role, // 👈 important
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Login failed",
+      error: err.message,
+    });
+  }
+};
 
 
 
+
+
+// exports.verifyOtp = async (req, res) => {
+//   const { otp } = req.body;
+//   const token = req.headers.authorization?.split(' ')[1];
+
+//   if (!token) return res.status(401).json({ message: 'Missing token' });
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await User.findById(decoded.id);
+
+//     if (!user || user.otp !== otp) {
+//       return res.status(400).json({ message: 'Invalid OTP' });
+//     }
+
+//     user.isVerified = true;
+//     user.otp = null;
+//     await user.save();
+
+//     res.json({ message: 'OTP verified successfully' });
+//   } catch (err) {
+//     res.status(401).json({ message: 'Invalid or expired token', error: err.message });
+//   }
+// };
+
+
+
+
+
+
+
+
+// exports.verifyOtp = async (req, res) => {
+//   const { otp } = req.body;
+
+//   try {
+//     const user = await User.findOne({ otp });
+
+//     if (!user) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+//     req.user = user; 
+//     user.otp = null;
+//     user.isVerified = true;
+//     await user.save();
+
+//     res.json({
+//       message: "OTP verified successfully",
+//       role: user.role,  // 🔥 MOST IMPORTANT
+//     });
+
+//   } catch (err) {
+//     res.status(500).json({
+//       message: "OTP verification failed",
+//       error: err.message,
+//     });
+//   }
+// };
 
 
 exports.verifyOtp = async (req, res) => {
   const { otp } = req.body;
-  const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) return res.status(401).json({ message: 'Missing token' });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    const user = await User.findOne({ otp });
 
-    if (!user || user.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    user.isVerified = true;
     user.otp = null;
+    user.isVerified = true;
     await user.save();
 
-    res.json({ message: 'OTP verified successfully' });
+    // 🔥 Generate JWT for future requests
+    const token = jwt.sign({ id: user._id }, "YOUR_SECRET_KEY", { expiresIn: "7d" });
+
+    res.json({
+      message: "OTP verified successfully",
+      role: user.role,
+      token, // send JWT to frontend
+    });
+
   } catch (err) {
-    res.status(401).json({ message: 'Invalid or expired token', error: err.message });
+    res.status(500).json({
+      message: "OTP verification failed",
+      error: err.message,
+    });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 exports.getUsers = async (req, res) => {
   try {
@@ -730,9 +852,174 @@ exports.resetPassword = async (req, res) => {
 
 
 
+// exports.checkInOut = async (req, res) => {
+//   try {
+//     // 🔑 Verify Token
+//     const token = req.headers.authorization?.split(" ")[1];
+//     if (!token) return res.status(401).json({ message: "Missing token" });
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await User.findById(decoded.id);
+//     if (!user) return res.status(404).json({ message: "User not found" });
+
+//     const { action } = req.body;
+//     if (!action) return res.status(400).json({ message: "Missing action" });
+
+//     const today = new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd
+//     const currentTime = new Date().toLocaleTimeString("en-IN", { hour12: true });
+
+//     // 🧩 Check if there's already an open record (CheckOutTime = null)
+//     const openRecord = await Attendance.findOne({
+//       user: user._id,
+//       date: today,
+//       CheckOutTime: null
+//     });
+
+//     // 🔒 Condition: if user is already checked in
+//     if (action === "check_in") {
+//       if (openRecord) {
+//         return res.status(400).json({
+//           message: "⚠️ You are already checked in! Please check out first.",
+//           existing: {
+//             date: openRecord.date,
+//             CheckInTime: openRecord.CheckInTime
+//           }
+//         });
+//       }
+
+//       // ✅ Create new record only if not already checked in
+//       const newRecord = new Attendance({
+//         user: user._id,
+//         User: user.name,
+//         date: today,
+//         Status: "check_in",
+//         CheckInTime: currentTime,
+//         CheckOutTime: null
+//       });
+
+//       await newRecord.save();
+//       return res.status(200).json({
+//         message: "✅ Checked in successfully",
+//         date: today,
+//         CheckInTime: currentTime
+//       });
+//     }
+
+//     // 🕓 Check-out logic
+//     else if (action === "check_out") {
+//       if (!openRecord) {
+//         return res.status(400).json({
+//           message: "⚠️ You are not checked in today!"
+//         });
+//       }
+
+//       openRecord.CheckOutTime = currentTime;
+//       openRecord.Status = "check_out";
+//       await openRecord.save();
+
+//       return res.status(200).json({
+//         message: "👋 Checked out successfully",
+//         date: today,
+//         CheckInTime: openRecord.CheckInTime,
+//         CheckOutTime: currentTime
+//       });
+//     }
+
+//     // Invalid action
+//     else {
+//       return res.status(400).json({ message: "Invalid action" });
+//     }
+
+//   } catch (error) {
+//     console.error("Attendance Error:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
 
 
 
+
+
+// exports.checkInOut = async (req, res) => {
+//   try {
+//     // 🔑 Verify token
+//     const token = req.headers.authorization?.split(" ")[1];
+//     if (!token) return res.status(401).json({ message: "Missing token" });
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await User.findById(decoded.id);
+//     if (!user) return res.status(404).json({ message: "User not found" });
+
+//     const { action } = req.body;
+//     if (!action) return res.status(400).json({ message: "Missing action" });
+
+//     const today = new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd
+//     const currentTime = new Date().toLocaleTimeString("en-IN", { hour12: true });
+
+//     // 🧩 Find existing record for today
+//     let attendance = await Attendance.findOne({ user: user._id, date: today }).sort({ _id: -1 });
+
+//     if (action === "check_in") {
+//       if (attendance && !attendance.CheckOutTime) {
+//         // ✅ Already checked in, update the existing record's CheckInTime
+//         attendance.CheckInTime = currentTime; // replace old time
+//         await attendance.save();
+//         return res.status(200).json({
+//           message: "⚠️ Already checked in. CheckIn time updated.",
+//           date: today,
+//           CheckInTime: attendance.CheckInTime,
+//           CheckOutTime: attendance.CheckOutTime || "-"
+//         });
+//       }
+
+//       // ✅ No open record → create new
+//       attendance = new Attendance({
+//         user: user._id,
+//         userName: user.name,
+//         date: today,
+//         Status: "check_in",
+//         CheckInTime: currentTime,
+//         CheckOutTime: null
+//       });
+
+//       await attendance.save();
+//       return res.status(200).json({
+//         message: "✅ Checked in successfully",
+//         date: today,
+//         CheckInTime: currentTime,
+//         CheckOutTime: "-"
+//       });
+//     }
+
+//     else if (action === "check_out") {
+//       if (!attendance || attendance.CheckOutTime) {
+//         return res.status(400).json({ message: "⚠️ No active check-in found to check out." });
+//       }
+
+//       attendance.CheckOutTime = currentTime;
+//       attendance.Status = "check_out";
+//       await attendance.save();
+
+//       return res.status(200).json({
+//         message: "👋 Checked out successfully",
+//         date: today,
+//         CheckInTime: attendance.CheckInTime,
+//         CheckOutTime: attendance.CheckOutTime
+//       });
+//     }
+
+//     else {
+//       return res.status(400).json({ message: "Invalid action" });
+//     }
+
+//   } catch (error) {
+//     console.error("Attendance Error:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+
+  
 exports.checkInOut = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -748,39 +1035,72 @@ exports.checkInOut = async (req, res) => {
     const today = new Date().toLocaleDateString("en-CA");
     const currentTime = new Date().toLocaleTimeString("en-IN", { hour12: true });
 
-    // ✅ Check if there is an "open" attendance record (CheckOutTime = null)
-    let attendance;
+    let attendance = await Attendance.findOne({ user: user._id, date: today }).sort({ _id: -1 });
+
+    // ---------------------------------------------------------
+    // CHECK-IN
+    // ---------------------------------------------------------
     if (action === "check_in") {
-      // Create new record if no open record exists
+      // Make user active
+      user.isActive = true;
+      await user.save();
+
+      if (attendance && !attendance.CheckOutTime) {
+        attendance.CheckInTime = currentTime;
+        await attendance.save();
+
+        return res.status(200).json({
+          message: "Already checked in. Time updated.",
+          date: today,
+          CheckInTime: attendance.CheckInTime,
+          CheckOutTime: attendance.CheckOutTime || "-"
+        });
+      }
+
       attendance = new Attendance({
         user: user._id,
-        User: user.name,
+        userName: user.name,
         date: today,
-        Status: action,
+        Status: "check_in",
         CheckInTime: currentTime,
         CheckOutTime: null
       });
+
       await attendance.save();
-    } else if (action === "check_out") {
-      // Find the last record without CheckOutTime
-      attendance = await Attendance.findOne({ user: user._id, date: today, CheckOutTime: null }).sort({ _id: -1 });
-      if (!attendance) {
-        return res.status(400).json({ message: "No check-in found to check out" });
-      }
-      attendance.CheckOutTime = currentTime;
-      attendance.Status = action;
-      await attendance.save();
-    } else {
-      return res.status(400).json({ message: "Invalid action" });
+
+      return res.status(200).json({
+        message: "Checked in successfully",
+        date: today,
+        CheckInTime: currentTime,
+        CheckOutTime: "-"
+      });
     }
 
-    res.status(200).json({
-      message: action === "check_in" ? "✅ Checked in successfully" : "👋 Checked out successfully",
-      user: user.name,
-      date: today,
-      CheckInTime: attendance.CheckInTime,
-      CheckOutTime: attendance.CheckOutTime
-    });
+    // ---------------------------------------------------------
+    // CHECK-OUT
+    // ---------------------------------------------------------
+    if (action === "check_out") {
+
+      if (!attendance || attendance.CheckOutTime) {
+        return res.status(400).json({ message: "No active check-in found." });
+      }
+
+      attendance.CheckOutTime = currentTime;
+      attendance.Status = "check_out";
+await attendance.save();
+      // Make user inactive
+      user.isActive = false;
+      await user.save();
+
+      return res.status(200).json({
+        message: "Checked out successfully",
+        date: today,
+        CheckInTime: attendance.CheckInTime,
+        CheckOutTime: attendance.CheckOutTime
+      });
+    }
+
+    return res.status(400).json({ message: "Invalid action" });
 
   } catch (error) {
     console.error("Attendance Error:", error);
@@ -788,6 +1108,1686 @@ exports.checkInOut = async (req, res) => {
   }
 };
 
+
+
+
+
+
+// Format time
+function formatTime(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hrs}h ${mins}m ${secs}s`;
+}
+// controllers/breakController.js
+
+exports.breakAction = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { action } = req.body;
+
+    if (!action) {
+      return res.status(400).json({ message: "Action is required" });
+    }
+
+    const now = new Date();
+
+    // ----------------------------
+    // START BREAK
+    // ----------------------------
+    if (action === "start") {
+      const running = await BreakTime.findOne({ user: userId, end: null });
+      if (running) {
+        return res.status(400).json({
+          message: "Break already running!",
+          runningBreak: running,
+        });
+      }
+
+      const newBreak = new BreakTime({
+        user: userId,
+        start: now,
+        date: now,
+      });
+
+      await newBreak.save();
+
+      return res.json({
+        message: "Break started",
+        break: newBreak,
+      });
+    }
+
+    // ----------------------------
+    // STOP BREAK
+    // ----------------------------
+    if (action === "stop") {
+const running = await BreakTime.findOne({ user: userId, end: null });
+if (!running) return res.status(400).json({ message: "No active break found" });
+
+running.end = now;
+running.durationSec = Math.floor((now - running.start) / 1000);
+running.durationFormatted = formatTime(running.durationSec);
+await running.save();
+
+
+      return res.json({ message: "Break stopped", break: running });
+    }
+
+    return res.status(400).json({ message: "Invalid action" });
+  } catch (err) {
+    console.error("Break action error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exports.getScreenTimeSummary = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Today start & end
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Use start time to filter sessions
+    const sessions = await BreakTime.find({
+      user: user._id,
+      start: { $gte: startOfDay, $lte: endOfDay }
+    }).sort({ start: 1 });
+
+    if (!sessions.length) {
+      return res.json({
+        message: "No break sessions today",
+        todayTotalOff: "0h 0m 0s",
+        totalOffSeconds: 0,
+        sessions: []
+      });
+    }
+
+    // Total off time
+    let totalSec = 0;
+    const formattedSessions = sessions.map(s => {
+      totalSec += s.durationSec || 0;
+      return {
+        start: s.start,
+        end: s.end,
+        duration: s.durationFormatted
+      };
+    });
+
+    const formatTime = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      return `${h}h ${m}m ${s}s`;
+    };
+
+    return res.json({
+      message: "Today's Screen OFF Summary",
+      user: {
+        name: user.name,
+        email: user.email
+      },
+      todayTotalOff: formatTime(totalSec),
+      totalOffSeconds: totalSec,
+      sessions: formattedSessions
+    });
+
+  } catch (error) {
+    console.log("Summary Error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exports.getScreenTimeadmin = async (req, res) => {
+  try {
+    // Helper to format seconds to HH:MM:SS
+    const formatTime = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      return `${h}h ${m}m ${s}s`;
+    };
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Get all users
+    const users = await User.find({});
+
+    // Build results for all users
+    const results = [];
+
+    for (const user of users) {
+      const sessions = await BreakTime.find({
+        user: user._id,
+        start: { $gte: startOfDay, $lte: endOfDay }
+      }).sort({ start: 1 });
+
+      let totalSec = 0;
+
+      const formattedSessions = sessions.map(s => {
+        let durationSec = s.durationSec || 0;
+
+        // For ongoing session, calculate live duration
+        if (!s.end) {
+          durationSec = Math.floor((new Date() - new Date(s.start)) / 1000);
+        }
+
+        totalSec += durationSec;
+
+        return {
+          start: s.start,
+          end: s.end,
+          durationFormatted: formatTime(durationSec)
+        };
+      });
+
+      results.push({
+        user: {
+          name: user.name,
+          email: user.email
+        },
+        todayTotalOff: formatTime(totalSec),
+        totalOffSeconds: totalSec,
+        sessions: formattedSessions
+      });
+    }
+
+    return res.json({
+      message: "Today's Screen OFF Summary for all users",
+      data: results
+    });
+
+  } catch (error) {
+    console.error("Summary Error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// controllers/leaveController.js
+// controllers/leaveController.js
+// controllers/leaveController.js
+
+
+
+
+// exports.leaveRequest = async (req, res) => {
+//   try {
+//     const { startDate, endDate, reason } = req.body;
+//     const user = req.user;
+
+//     if (!startDate || !endDate) {
+//       return res.status(400).json({ message: "startDate and endDate are required" });
+//     }
+
+//     const leave = new LeaveRequest({
+//       user: user._id,
+//       startDate,
+//       endDate,
+//       reason,
+//       status: ""
+//     });
+
+//     await leave.save();
+//     res.status(201).json({ message: "✅ Leave request submitted", data: leave });
+//   } catch (err) {
+//     res.status(500).json({ message: "Failed to apply leave", error: err.message });
+//   }
+// };
+
+
+
+
+
+
+exports.leaveRequest = async (req, res) => {
+  try {
+    // Correct destructuring from frontend body
+    const { startDate, endDate, reason, leavetype } = req.body;
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "User not authorized" });
+    }
+
+    const leave = new Leave({
+      user: req.user.id,
+      startDate,
+      endDate,
+      reason,
+      leavetype,  
+    });
+
+    await leave.save();
+
+    res.status(201).json({
+      message: "✅ Leave request submitted",
+      data: leave
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to apply leave",
+      error: err.message
+    });
+  }
+};
+
+
+
+
+
+
+// exports.updateLeaveStatus = async (req, res) => {
+//   try {
+//     const token = req.headers.authorization?.split(" ")[1];
+//     if (!token) return res.status(401).json({ message: "Missing token" });
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     // Only admin can approve/reject (Optional)
+//     const admin = await User.findById(decoded.id);
+//     if (!admin || admin.role !== "admin") {
+//       return res.status(403).json({ message: "Only admin can update leave status" });
+//     }
+
+//     const { leaveId, action, reason } = req.body;
+
+//     if (!leaveId || !action)
+//       return res.status(400).json({ message: "leaveId and action are required" });
+
+//     const leave = await Leave.findById(leaveId).populate("user", "name email");
+//     if (!leave) return res.status(404).json({ message: "Leave not found" });
+
+//     // ------------------------------------------------------------
+//     // APPROVE
+//     // ------------------------------------------------------------
+//     if (action === "approve") {
+//       leave.status = "Approved";
+//       await leave.save();
+
+//       await sendEmail({
+//         to: leave.user.email,
+//         subject: "Leave Approved ✅",
+//         text: `Hello ${leave.user.name},\n\nYour leave from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()} has been approved.\n\nRegards,\nAdmin`
+//       });
+
+//       return res.status(200).json({
+//         message: "Leave approved successfully",
+//         leave
+//       });
+//     }
+
+//     // ------------------------------------------------------------
+//     // REJECT
+//     // ------------------------------------------------------------
+//     if (action === "reject") {
+//       leave.status = "Rejected";
+//       leave.reason = reason || leave.reason;
+//       await leave.save();
+
+//       await sendEmail({
+//         to: leave.user.email,
+//         subject: "Leave Rejected ❌",
+//         text: `Hello ${leave.user.name},\n\nYour leave has been rejected.\nReason: ${reason || 'Not provided'}\n\nRegards,\nAdmin`
+//       });
+
+//       return res.status(200).json({
+//         message: "Leave rejected successfully",
+//         leave
+//       });
+//     }
+
+//     return res.status(400).json({ message: "Invalid action" });
+
+//   } catch (error) {
+//     console.error("Leave Status Update Error:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+// APPROVE LEAVE
+
+
+
+exports.updateLeaveStatus = async (req, res) => {
+  try {
+    const { id, action } = req.body;
+
+    if (!id || !action) {
+      return res.status(400).json({ message: "ID and action required" });
+    }
+
+    if (!["approved", "rejected"].includes(action)) {
+      return res.status(400).json({ message: "Action must be approved or rejected" });
+    }
+
+    const updatedLeave = await Leave.findByIdAndUpdate(
+      id,
+      { status: action },
+      { new: true }
+    );
+
+    if (!updatedLeave) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    res.status(200).json({
+      message: `Leave ${action} successfully`,
+      leave: updatedLeave,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+
+
+// exports.approveLeave = async (req, res) => {
+//   try {
+//     const { id } = req.body; // leave ID
+
+//     const leave = await Leave.findByIdAndUpdate(
+//       id,
+//       { status: "approved" },
+//       { new: true }
+//     );
+
+//     if (!leave) {
+//       return res.status(404).json({ message: "Leave not found" });
+//     }
+
+//     res.json({
+//       message: "Leave Approved Successfully",
+//       leave,
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Error approving leave" });
+//   }
+// };
+
+// // REJECT LEAVE
+// exports.rejectLeave = async (req, res) => {
+//   try {
+//     const { id } = req.body; // leave ID
+
+//     const leave = await Leave.findByIdAndUpdate(
+//       id,
+//       { status: "rejected" },
+//       { new: true }
+//     );
+
+//     if (!leave) {
+//       return res.status(404).json({ message: "Leave not found" });
+//     }
+
+//     res.json({
+//       message: "Leave Rejected Successfully",
+//       leave,
+//     });
+    
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Error rejecting leave" });
+//   }
+// };
+
+
+
+exports.myattendance = async (req, res) => {
+  try {
+    console.log("➡️ My Attendance API Hit");
+    const userId = req.user.id;
+    console.log("User ID:", userId);
+
+    const records = await Attendance.find(
+      { user: userId },
+      {
+        date: 1,
+        CheckInTime: 1,
+        CheckOutTime: 1,
+        Status: 1,
+        _id: 0,
+        user: 1, // populate ke liye
+      }
+    ).populate({
+      path: "user",
+      select: "name email -_id",
+    });
+
+    // Format records for frontend
+    const formattedRecords = records.map(r => ({
+      date: r.date,
+      checkInTime: r.CheckInTime || "-",
+      checkOutTime: r.CheckOutTime || "-",
+      status: r.CheckInTime ? "Present" : "Absent",
+      user: r.user || {},
+    }));
+
+    console.log("Attendance Records:", formattedRecords);
+
+    res.status(200).json({
+      success: true,
+      data: formattedRecords,
+    });
+  } catch (error) {
+    console.log("❌ Error:", error);
+    res.status(500).json({
+      message: "Failed to fetch attendance",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exports.getTotalUsers = async (req, res) => {
+  try {
+    console.log("➡️ Total Users API Hit");
+
+    // Fetch all users with name and email
+    const users = await User.find({}, { name: 1, email: 1, number:1, role: 1, _id: 0, });
+    console.log(users,"----------------------->")
+
+    console.log("Total Users:", users.length);
+
+    res.status(200).json({
+      totalUsers: users.length,
+      users, // array of user objects with name & email
+    });
+  } catch (error) {
+    console.log("Error:", error);
+    res.status(500).json({
+      message: "Failed to fetch total users",
+      error: error.message,
+    });
+  }
+};
+
+exports.searchUserByEmail = async (req, res) => {
+  try {
+    console.log("➡️ Search User API Hit");
+
+    // Get email from query params
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ message: "Email query parameter is required" });
+    }
+
+    // Search user by email (case-insensitive)
+    const user = await User.findOne({ email: { $regex: new RegExp(email, "i") } }, { name: 1, email: 1, number: 1, role: 1, _id: 0 });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.log("Error:", error);
+    res.status(500).json({
+      message: "Failed to search user",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exports.getMyAttendanceDetails = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const records = await Attendance.find({ user: userId })
+      .select("date CheckInTime CheckOutTime")
+      .sort({ date: -1 });
+
+    if (!records.length) {
+      return res.status(404).json({ message: "No attendance records found" });
+    }
+
+    // Helper function → convert "11:05:01 am" into 24 hour format "11:05:01"
+    const convertTo24Hour = (timeString) => {
+      if (!timeString) return null;
+
+      const [time, modifier] = timeString.split(" ");
+      let [hours, minutes, seconds] = time.split(":");
+
+      hours = parseInt(hours);
+
+      if (modifier.toLowerCase() === "pm" && hours !== 12) {
+        hours += 12;
+      } else if (modifier.toLowerCase() === "am" && hours === 12) {
+        hours = 0;
+      }
+
+      return `${hours.toString().padStart(2, "0")}:${minutes}:${seconds}`;
+    };
+
+    const formattedRecords = records.map((rec) => {
+      let workingHours = "00:00:00";
+
+      if (rec.CheckInTime && rec.CheckOutTime) {
+        const checkIn24 = convertTo24Hour(rec.CheckInTime);
+        const checkOut24 = convertTo24Hour(rec.CheckOutTime);
+
+        const checkIn = new Date(`2000-01-01T${checkIn24}`);
+        const checkOut = new Date(`2000-01-01T${checkOut24}`);
+
+        let diffMs = checkOut - checkIn;
+
+        if (diffMs < 0) diffMs = 0;
+
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+        workingHours = `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      }
+
+      return {
+        date: rec.date,
+        checkInTime: rec.CheckInTime,
+        checkOutTime: rec.CheckOutTime,
+        status: rec.CheckInTime ? "Present" : "Absent",
+        workingHours,
+      };
+    });
+
+    res.status(200).json({
+      message: "Attendance detail records fetched successfully",
+      data: formattedRecords,
+    });
+  } catch (error) {
+    console.error("Attendance Detail API Error:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// exports.getTotalUsers = async (req, res) => {
+//   try {
+//     console.log("➡️ Total Users API Hit");
+
+//     // Fetch all users with name and email
+//     const users = await User.find({}, { name: 1, email: 1, _id: 0 });
+
+//     console.log("Total Users:", users.length);
+
+//     res.status(200).json({
+//       totalUsers: users.length,
+//       users, // array of user objects with name & email
+//     });
+//   } catch (error) {
+//     console.log("Error:", error);
+//     res.status(500).json({
+//       message: "Failed to fetch total users",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+
+// exports.getActiveUsers = async (req, res) => {
+//   try {
+//     const today = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+
+//     const activeAttendances = await Attendance.find({
+//       date: today, // string match
+//       CheckInTime: { $ne: null },
+//       CheckOutTime: null
+//     }).populate("user", "name email");
+
+//     const users = activeAttendances.map(a => ({
+//       id: a.user._id,
+//       name: a.user.name,
+//       email: a.user.email
+//     }));
+
+//     res.json({
+//       totalActive: users.length,
+//       users
+//     });
+
+//   } catch (error) {
+//     console.error("Active Users Error:", error);
+//     res.status(500).json({ message: "Failed to fetch active users", error: error.message });
+//   }
+// };
+
+
+// =====================
+// Get Active Users
+// =====================
+
+exports.getActiveUsers = async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+
+    // Find attendance records where user has checked in but not checked out today
+    const activeAttendances = await Attendance.find({
+      date: today,
+      CheckInTime: { $ne: null },
+      CheckOutTime: null
+    }).populate("user", "name email");
+
+    // Map the user details
+    const users = activeAttendances.map(a => ({
+      id: a.user._id,
+      name: a.user.name,
+      email: a.user.email,
+      checkInTime: a.CheckInTime
+    }));
+
+    res.status(200).json({
+      totalActive: users.length,
+      users
+    });
+  
+  } catch (error) {
+    console.error("Active Users Error:", error);
+    res.status(500).json({ message: "Failed to fetch active users", error: error.message });
+  }
+};
+
+
+
+
+
+
+
+
+// exports.getTodayActivity = async (req, res) => {
+//   try {
+//     const token = req.headers.authorization?.split(" ")[1];
+//     if (!token) return res.status(401).json({ message: "Missing token" });
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await User.findById(decoded.id).select("name email");
+//     if (!user) return res.status(404).json({ message: "User not found" });
+
+//     const today = new Date().toLocaleDateString("en-CA");
+
+//     // ✅ fetch today's attendance (latest if multiple records exist)
+//     const attendance = await Attendance.findOne({ user: user._id, date: today })
+//       .sort({ _id: -1 })
+//       .select("CheckInTime CheckOutTime date");
+
+//     if (!attendance) {
+//       return res.status(404).json({ message: "No activity found for today" });
+//     }
+
+//     // convert "11:05:01 am" → "11:05:01"
+//     const convertTo24Hour = (timeString) => {
+//       if (!timeString) return null;
+//       const [time, modifier] = timeString.split(" ");
+//       let [hours, minutes, seconds] = time.split(":");
+//       hours = parseInt(hours);
+//       if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
+//       if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+//       return `${hours.toString().padStart(2, "0")}:${minutes}:${seconds}`;
+//     };
+
+//     // calculate working hours
+//     let workingHours = "00:00:00";
+//     if (attendance.CheckInTime && attendance.CheckOutTime) {
+//       const checkIn24 = convertTo24Hour(attendance.CheckInTime);
+//       const checkOut24 = convertTo24Hour(attendance.CheckOutTime);
+//       const diff = new Date(`2000-01-01T${checkOut24}`) - new Date(`2000-01-01T${checkIn24}`);
+//       const h = Math.floor(diff / 3600000);
+//       const m = Math.floor((diff % 3600000) / 60000);
+//       const s = Math.floor((diff % 60000) / 1000);
+//       workingHours = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+//     }
+
+//     res.status(200).json({
+//       name: user.name,
+//       email: user.email,
+//       checkInTime: attendance.CheckInTime || "-",
+//       checkOutTime: attendance.CheckOutTime || "-",
+//       status: attendance.CheckInTime ? "Present" : "Absent",
+//       workingHours,
+//     });
+
+//   } catch (error) {
+//     console.error("Get Attendance Error:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+
+
+// controllers/leaveController.js
+// exports.getLeaveRequests = async (req, res) => {
+//   try {
+//     if (!req.user || !req.user.isAdmin) {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     // Fetch all leaves and populate user info
+//     const leaves = await Leave.find()
+//       .populate("user", "name email")
+//       .sort({ startDate: -1 });
+
+//     // Group by user email to get unique users
+//     const uniqueUsersMap = new Map();
+
+//     leaves.forEach((l) => {
+//       if (!uniqueUsersMap.has(l.user.email)) {
+//         uniqueUsersMap.set(l.user.email, {
+//           name: l.user.name,
+//           email: l.user.email,
+//           startDate: l.startDate,
+//           endDate: l.endDate,
+//           leavetype: l.leavetype,
+//           reason: l.reason,
+//           status: l.status,
+//         });
+//       }
+//     });
+
+//     const uniqueLeaves = Array.from(uniqueUsersMap.values());
+
+//     res.status(200).json({
+//       message: "✅ Unique user leave requests fetched successfully",
+//       totalUsers: uniqueLeaves.length,
+//       leaves: uniqueLeaves,
+//     });
+
+//   } catch (err) {
+//     console.error("Get Unique User Leaves Error:", err);
+//     res.status(500).json({
+//       message: "Failed to fetch unique leave requests",
+//       error: err.message,
+//     });
+//   }
+// };
+
+// Get all leave requests (role check removed)
+exports.getLeaveRequests = async (req, res) => {
+  try {
+    // Check if user is logged in
+    if (!req.user) {
+      return res.status(401).json({ message: "User not authorized" });
+    }
+
+    // Fetch all leave requests from DB
+    const leaves = await Leave.find()
+      .populate("user", "name email") // fetch user name and email
+      .sort({ startDate: -1 });       // latest first
+
+    // Map data to simple format
+    const simplifiedLeaves = leaves.map(l => ({
+        _id: l._id, 
+      name: l.user.name,
+      email: l.user.email,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      leavetype: l.leavetype,
+      reason: l.reason,
+      status: l.status,
+    }));
+
+    // Send response
+    res.status(200).json({
+      message: "✅ All leave requests fetched successfully",
+      totalLeaves: simplifiedLeaves.length,
+      leaves: simplifiedLeaves,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch leave requests", error: err.message });
+  }
+};
+
+
+exports.getMyLeaves = async (req, res) => {
+  try {
+    const leaves = await Leave.find({ user: req.user._id }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      leaves,
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+// GET /api/auth/attendance-summary
+
+exports.getAttendanceSummary = async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString("en-CA");
+
+    const users = await User.find({}, { name: 1, email: 1 });
+    const summary = [];
+
+    for (let user of users) {
+      const attendances = await Attendance.find({ user: user._id, date: today }).sort({ CheckInTime: 1 });
+
+      if (attendances.length > 0) {
+        const firstCheckIn = attendances[0].CheckInTime;
+        const lastCheckOut = attendances.filter(a => a.CheckOutTime).length > 0
+                              ? attendances.filter(a => a.CheckOutTime).slice(-1)[0].CheckOutTime
+                              : null;
+
+        // HH:MM:SS AM/PM parser
+     // HH:MM:SS am/pm parser
+const parseTime = (timeStr) => {
+  if (!timeStr) return null;
+
+  // Ensure proper format with space
+  let str = timeStr.trim();
+  if (!str.includes(" ")) {
+    str = str.slice(0, -2) + " " + str.slice(-2); // 10:37:01am -> 10:37:01 am
+  }
+
+  const [time, modifier] = str.split(" ");
+  let [hours, minutes, seconds] = time.split(":").map(Number);
+  if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
+  if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+  return { hours, minutes, seconds };
+};
+
+// Working hours calculate
+let totalWorkingHours = "-";
+if (firstCheckIn && lastCheckOut) {
+  const start = parseTime(firstCheckIn);
+  const end = parseTime(lastCheckOut);
+  if (start && end) {
+    const startDate = new Date(1970, 0, 1, start.hours, start.minutes, start.seconds);
+    const endDate = new Date(1970, 0, 1, end.hours, end.minutes, end.seconds);
+
+    let diffMs = endDate - startDate;
+    if (diffMs < 0) diffMs += 24*60*60*1000; // midnight cross
+
+    const hours = Math.floor(diffMs / 1000 / 60 / 60);
+    const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+    const seconds = Math.floor((diffMs / 1000) % 60);
+
+    totalWorkingHours = `${hours}h ${minutes}m ${seconds}s`;
+  }
+}
+
+
+
+        summary.push({
+          userName: user.name,
+          email: user.email,
+          date: today,
+          firstCheckIn,
+          lastCheckOut: lastCheckOut || "-",
+          status: "Present",
+          totalWorkingHours
+        });
+
+      } else {
+        summary.push({
+          userName: user.name,
+          email: user.email,
+          date: today,
+          firstCheckIn: "-",
+          lastCheckOut: "-",
+          status: "Absent",
+          totalWorkingHours: "-"
+        });
+      }
+    }
+
+    return res.status(200).json(summary);
+
+  } catch (error) {
+    console.error("Attendance Summary Error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+
+exports.MyAttendanceSummary = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Missing token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Get all attendance records of this user
+    const attendances = await Attendance.find({ user: user._id }).sort({ date: 1 });
+
+    // Get all dates between first and last attendance
+    const dates = [];
+    if (attendances.length > 0) {
+      const startDate = new Date(attendances[0].date);
+      const endDate = new Date(attendances[attendances.length - 1].date);
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        dates.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+      }
+    }
+
+    // Helper to parse time
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      let str = timeStr.trim();
+      if (!str.includes(" ")) str = str.slice(0, -2) + " " + str.slice(-2); // 10:37:01am -> 10:37:01 am
+      const [time, modifier] = str.split(" ");
+      let [hours, minutes, seconds] = time.split(":").map(Number);
+      if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
+      if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+      return { hours, minutes, seconds };
+    };
+
+    const summary = dates.map((dateStr) => {
+      const dayRecords = attendances.filter((a) => a.date === dateStr);
+
+      let status = "Absent";
+      let firstCheckIn = "-";
+      let lastCheckOut = "-";
+      let workingHours = "0h 0m 0s";
+
+      if (dayRecords.length > 0) {
+        status = "Present";
+
+        const checkIns = dayRecords.map((r) => r.CheckInTime).filter(Boolean).sort();
+        const checkOuts = dayRecords.map((r) => r.CheckOutTime).filter(Boolean).sort();
+
+        firstCheckIn = checkIns[0] || "-";
+        lastCheckOut = checkOuts[checkOuts.length - 1] || "-";
+
+        // Calculate working hours
+        let totalHours = 0;
+        dayRecords.forEach((r) => {
+          if (r.CheckInTime && r.CheckOutTime) {
+            const start = parseTime(r.CheckInTime);
+            const end = parseTime(r.CheckOutTime);
+            if (start && end) {
+              const startDate = new Date(1970, 0, 1, start.hours, start.minutes, start.seconds);
+              const endDate = new Date(1970, 0, 1, end.hours, end.minutes, end.seconds);
+              let diffMs = endDate - startDate;
+              if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000; // midnight cross
+              totalHours += diffMs;
+            }
+          }
+        });
+
+        const hours = Math.floor(totalHours / 1000 / 60 / 60);
+        const minutes = Math.floor((totalHours / 1000 / 60) % 60);
+        const seconds = Math.floor((totalHours / 1000) % 60);
+        workingHours = `${hours}h ${minutes}m ${seconds}s`;
+      }
+
+      return {
+        date: dateStr,
+        status,
+        firstCheckIn,
+        lastCheckOut,
+        workingHours,
+      };
+    });
+
+    return res.status(200).json({
+      username: user.name,
+      email: user.email,
+      totalDays: summary.length,
+      summary,
+    });
+  } catch (error) {
+    console.error("Get My Daily Attendance Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+
+// exports.createLeave = async (req, res) => {
+//   try {
+//     // Temporary testing only (replace with actual logged-in user later)
+//     const user = await User.findOne(); // first user from DB
+//     if (!user) return res.status(400).json({ message: "No user found for testing" });
+
+//     const leave = new Empleave({
+//       user: user._id,  // manually set for testing
+//       PaidLeave: req.body.PaidLeave || 0,
+//       SickLeave: req.body.SickLeave || 0,
+//       UnpaidLeave: req.body.UnpaidLeave || 0,
+//       FestivalLeave: req.body.FestivalLeave || 0,
+//       leavetype: req.body.leavetype,
+//     });
+
+//     const savedLeave = await leave.save();
+//     res.status(201).json(savedLeave);
+//   } catch (err) {
+//     res.status(400).json({ message: err.message });
+//   }
+// };
+
+
+// ✅ CREATE LEAVE
+exports.createLeave = async (req, res) => {
+  try {
+    const user = await User.findOne(); // testing only, replace with req.user later
+    if (!user) return res.status(400).json({ message: "No user found" });
+
+    const leave = new Empleave({
+      user: user._id,  
+      PaidLeave: req.body.PaidLeave || 0,
+      SickLeave: req.body.SickLeave || 0,
+      UnpaidLeave: req.body.UnpaidLeave || 0,
+      FestivalLeave: req.body.FestivalLeave || 0,
+    });
+
+    const savedLeave = await leave.save();
+    res.status(201).json(savedLeave);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+
+
+
+// exports.createLeave = async (req, res) => {
+//   try {
+//     // Backend decides user (for example first user or some logic)
+//     const user = await User.findOne(); // for testing or automated leave creation
+//     if (!user) return res.status(400).json({ message: "No user found" });
+
+//     // Backend decides leave type and counts
+//     const leave = new Empleave({
+//       user: user._id,
+//       PaidLeave: 2,           // backend sets value
+//       SickLeave: 1,
+//       UnpaidLeave: 0,
+//       FestivalLeave: 1,
+//       leavetype: "CasualLeave", // backend decides
+//       admin: user.role === "admin" ? user._id : undefined,
+//     });
+
+//     const savedLeave = await leave.save();
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Leave created by backend successfully",
+//       data: savedLeave,
+//     });
+//   } catch (err) {
+//     console.error("createLeave error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+// exports.createLeave = async (req, res) => {
+//   try {
+//     // Use logged-in user, fallback to first user for testing
+//     const user = req.user || (await User.findOne());
+//     if (!user) return res.status(400).json({ message: "No user found" });
+
+//     // Validate leavetype
+//     const { leavetype, PaidLeave = 0, SickLeave = 0, UnpaidLeave = 0, FestivalLeave = 0 } = req.body;
+//     if (!leavetype) {
+//       return res.status(400).json({ message: "leavetype is required" });
+//     }
+
+//     const leave = new Empleave({
+//       user: user._id,
+//       PaidLeave,
+//       SickLeave,
+//       UnpaidLeave,
+//       FestivalLeave,
+//       leavetype,
+//       admin: req.user?.role === "admin" ? req.user._id : undefined,
+//     });
+
+//     const savedLeave = await leave.save();
+//     res.status(201).json({
+//       success: true,
+//       message: "Leave created successfully",
+//       data: savedLeave,
+//     });
+//   } catch (err) {
+//     console.error("createLeave error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+// exports.updateLeave = async (req, res) => {
+//   try {
+//     const leaveId = req.params.leaveId;
+
+//     // Check if leave exists
+//     const leave = await Empleave.findById(leaveId);
+//     if (!leave) {
+//       return res.status(404).json({ message: "Leave not found" });
+//     }
+
+//     // Update only the provided fields
+//     Object.keys(req.body).forEach((key) => {
+//       leave[key] = req.body[key];
+//     });
+
+//     const updatedLeave = await leave.save();
+
+//     res.status(200).json(updatedLeave);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+exports.updateLeave = async (req, res) => {
+  try {
+    const leaveId = req.params.id; // leave _id from URL
+    const updates = req.body;
+
+    // Find leave by ID
+    const leave = await Empleave.findById(leaveId);
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
+    }
+
+    // Optional: if only the owner or admin can update
+    if (req.user.role !== "admin" && leave.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized to edit this leave" });
+    }
+
+    // Apply updates
+    Object.keys(updates).forEach((key) => {
+      leave[key] = updates[key];
+    });
+
+    const updatedLeave = await leave.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Leave updated successfully",
+      data: updatedLeave,
+    });
+  } catch (err) {
+    console.error("updateLeave error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+
+exports.deleteLeave = async (req, res) => {
+  try {
+    const leaveId = req.params.id; // leave _id from URL
+
+    // Find leave by ID
+    const leave = await Empleave.findById(leaveId);
+    if (!leave) {
+      return res.status(404).json({ message: "Leave record not found" });
+    }
+
+    // Optional: only admin or leave owner can delete
+    if (req.user.role !== "admin" && leave.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized to delete this leave" });
+    }
+
+    // Delete the leave
+    await leave.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Leave deleted successfully",
+    });
+  } catch (err) {
+    console.error("deleteLeave error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+exports.getLeaves = async (req, res) => {
+  try {
+    const user = await User.findOne(); // testing same as createLeave
+    if (!user) return res.status(400).json({ message: "No user found" });
+
+    const leaves = await Empleave.find({ user: user._id })
+      .select("PaidLeave SickLeave UnpaidLeave FestivalLeave createdAt");
+
+    res.status(200).json(leaves);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Approve a leave request
+
+// exports.approveLeave = async (req, res) => {
+//   try {
+//     const { id } = req.body; // leave _id
+
+//     if (!id) {
+//       return res.status(400).json({ message: "Leave ID is required" });
+//     }
+
+//     // Find leave by _id only (not user-specific)
+// // Agar aap Leave model ka use kar rahe ho
+
+// const leave = await Leave.findById(id).populate("user", "name email");
+//     if (!leave) {
+//       return res.status(404).json({ message: "Leave not found" });
+//     }
+// leave.leavetype = leave.leavetype || "PaidLeave"; // agar missing ho toh default
+
+//     leave.status = "approved";
+//     const updatedLeave = await leave.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Leave approved for ${leave.user.name} (${leave.user.email})`,
+//       data: updatedLeave
+//     });
+
+//   } catch (err) {
+//     console.error("approveLeave error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+// controllers/leaveController.js
+
+exports.approveLeave = async (req, res) => {
+  try {
+    console.log("BODY => ", req.body);
+
+    const id = req.body.id;
+
+    const leave = await Leave.findById(id);  // <-- FIXED
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
+    }
+
+    leave.status = "Approved";
+    await leave.save();
+
+    res.status(200).json({
+      message: "Leave approved successfully",
+      leave
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+// exports.rejectLeave = async (req, res) => {
+//   try {
+//     const { id } = req.body;
+
+//     if (!id) {
+//       return res.status(400).json({ message: "Leave ID is required" });
+//     }
+
+//     const leave = await Leave.findById(id).populate("user", "name email");
+//     if (!leave) {
+//       return res.status(404).json({ message: "Leave not found" });
+//     }
+
+//     // Ensure leavetype exists
+//     leave.leavetype = leave.leavetype || "PaidLeave";
+
+//     // Set correct status enum
+//     leave.status = "Rejected";
+//     leave.admin = req.user._id; // optional: save who rejected
+
+//     const updatedLeave = await leave.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
+//       data: updatedLeave
+//     });
+
+//   } catch (err) {
+//     console.error("rejectLeave error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// exports.rejectLeave = async (req, res) => {
+//   try {
+//     const { id, reason } = req.body;
+
+//     if (!id) return res.status(400).json({ message: "Leave ID is required" });
+//     if (!reason || reason.trim() === "")
+//       return res.status(400).json({ message: "Rejection reason is required" });
+
+//     const leave = await Leave.findById(id).populate("user", "name email");
+//     if (!leave) return res.status(404).json({ message: "Leave not found" });
+
+//     leave.status = "Rejected";
+//     leave.rejectionReason = reason;
+//     leave.admin = req.user._id;
+
+//     const updatedLeave = await leave.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
+//       data: updatedLeave,
+//     });
+//   } catch (err) {
+//     console.error("rejectLeave error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+
+
+
+
+
+// exports.rejectLeave = async (req, res) => {
+//   try {
+//     const { id, reason } = req.body; // <-- destructure id and reason correctly
+
+//     if (!id) {
+//       return res.status(400).json({ message: "Leave ID is required" });
+//     }
+
+//     if (!reason || reason.trim() === "") {
+//       return res.status(400).json({ message: "Rejection reason is required" });
+//     }
+
+//     const leave = await Leave.findById(id).populate("user", "name email"); // <-- pass only id
+//     if (!leave) {
+//       return res.status(404).json({ message: "Leave not found" });
+//     }
+
+//     // Set status and rejection reason
+//     leave.status = "Rejected";
+//     leave.rejectionReason = reason; // save reason in schema
+//     leave.admin = req.user._id;
+
+//     const updatedLeave = await leave.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
+//       data: updatedLeave
+//     });
+//   } catch (err) {
+//     console.error("rejectLeave error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+exports.rejectLeave = async (req, res) => {
+  try {
+    const { id, reason } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: "Leave ID is required" });
+    }
+
+    if (!reason || reason.trim() === "") {
+      return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
+    const leave = await Leave.findById(id).populate("user", "name email");
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
+    }
+
+    leave.status = "Rejected";
+    leave.rejectionReason = reason;
+    leave.admin = req.user._id;
+
+    const updatedLeave = await leave.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
+      data: updatedLeave
+    });
+  } catch (err) {
+    console.error("rejectLeave error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exports.getApprovedLeaves = async (req, res) => {
+  try {
+    const approvedLeaves = await Leave.find({ status: "Approved" })
+      .populate("user", "name email")
+      .sort({ startDate: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: approvedLeaves.length,
+      data: approvedLeaves
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+exports.getRejectedLeaves = async (req, res) => {
+  try {
+    const rejectedLeaves = await Leave.find(
+      { status: "Rejected" },
+      {
+        rejectionReason: 1,   // <-- Add this
+        startDate: 1,
+        endDate: 1,
+        leavetype: 1,
+        reason: 1,
+        status: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        user: 1
+      }
+    )
+      .populate("user", "name email")
+      .sort({ startDate: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: rejectedLeaves.length,
+      data: rejectedLeaves
+    });
+   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 
 
