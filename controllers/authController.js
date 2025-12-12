@@ -13,27 +13,6 @@ const BreakTime = require("../models/BreakTime");
 
 
 
-// exports.signup = async (req, res) => {
-
-//   const { name, email, password, number } = req.body;
-//   const image = req.file?.path;  // e.g., 'uploads/163456789-profile.jpg'
-
-//   try {
-//     const existing = await User.findOne({ email });
-//     if (existing) return res.status(400).json({ message: 'Email already registered' });
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     const user = new User({ name, email, number, password: hashedPassword, image });
-//     await user.save();
-
-//     res.status(201).json({ message: 'Signup successful' });
-//   } catch (err) {
-//     res.status(500).json({ message: 'Signup failed', error: err.message });
-//   }
-// };
-
-
 exports.signup = async (req, res) => {
   console.log("req.body:", req.body);
   console.log("req.file:", req.file);
@@ -59,52 +38,9 @@ exports.signup = async (req, res) => {
 
 
 
-// exports.login = async (req, res) => {
-//   const { email, password } = req.body;
-//   try {
-//     const user = await User.findOne({ email });
-//     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
-
-//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-//     user.otp = otp;
-//     await user.save();
-
-//     await sendEmail(email, 'Your OTP Code', `Your OTP is: ${otp}`);
-
-//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-//     res.json({ message: 'OTP sent to email', token });
-//   } catch (err) {
-//     res.status(500).json({ message: 'Login failed', error: err.message });
-//   }
-// };
 
 
 
-
-
-// exports.logout = async (req, res) => {
-//   const { email, password } = req.body;
-
-//   try {
-//     const user = await User.findOne({ email });
-//     if (!user) return res.status(400).json({ message: "Invalid credentials" });
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
-//     // Optional: clear OTP or token fields if you store them
-//     user.otp = null;
-//     await user.save();
-
-//     res.json({ message: "Logout successful" });
-//   } catch (err) {
-//     res.status(500).json({ message: "Logout failed", error: err.message });
-//   }
-// };
 
 
 
@@ -152,63 +88,8 @@ exports.login = async (req, res) => {
 
 
 
-// exports.verifyOtp = async (req, res) => {
-//   const { otp } = req.body;
-//   const token = req.headers.authorization?.split(' ')[1];
-
-//   if (!token) return res.status(401).json({ message: 'Missing token' });
-
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const user = await User.findById(decoded.id);
-
-//     if (!user || user.otp !== otp) {
-//       return res.status(400).json({ message: 'Invalid OTP' });
-//     }
-
-//     user.isVerified = true;
-//     user.otp = null;
-//     await user.save();
-
-//     res.json({ message: 'OTP verified successfully' });
-//   } catch (err) {
-//     res.status(401).json({ message: 'Invalid or expired token', error: err.message });
-//   }
-// };
 
 
-
-
-
-
-
-
-// exports.verifyOtp = async (req, res) => {
-//   const { otp } = req.body;
-
-//   try {
-//     const user = await User.findOne({ otp });
-
-//     if (!user) {
-//       return res.status(400).json({ message: "Invalid OTP" });
-//     }
-//     req.user = user; 
-//     user.otp = null;
-//     user.isVerified = true;
-//     await user.save();
-
-//     res.json({
-//       message: "OTP verified successfully",
-//       role: user.role,  // 🔥 MOST IMPORTANT
-//     });
-
-//   } catch (err) {
-//     res.status(500).json({
-//       message: "OTP verification failed",
-//       error: err.message,
-//     });
-//   }
-// };
 
 
 exports.verifyOtp = async (req, res) => {
@@ -274,84 +155,6 @@ exports.getUsers = async (req, res) => {
 
 
 
-// exports.Profile = async (req, res) => {
-//   try {
-//     const { city, state, address } = req.body;
-//      try {
-//     const token = req.headers.authorization?.split(" ")[1];
-//     if (!token) {
-//       return res.status(401).json({ message: "Missing token" });
-//     }
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     req.user = decoded; // Now your controller can access req.user.id
-//     next();
-//   } catch (err) {
-//     return res.status(401).json({ message: "Invalid or expired token" });
-//   }
-
-
-//     const newProfile =  Profile({
-//       user: userId,
-//       city,
-//       state,
-//       address,
-
-//     });
-
-//     await newProfile.save();
-
-//     console.log(" Profile Saved:");
-
-//     res.status(200).json({
-//       message: 'Profile API working fine',
-//       data: newProfile
-//     });
-
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-
-
-
-
-
-
-
-
-
-// exports.Profile = async (req, res) => {
-//   try {
-//     const { city, state, address } = req.body;
-//       const image = req.file?.path;
-
-//     const userId = req.user.id; 
-
-//     const newProfile = new Profile({
-//       user: userId,
-//       city,
-//       state,
-//       address,
-//       image,
-      
-//     });
-
-//     await newProfile.save();
-
-//     console.log("Profile saved successfully");
-
-//     res.status(200).json({
-//       message: "Profile saved successfully",
-//       data: newProfile,
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Failed to save profile", error: err.message });
-//   }
-// };
 
 
 
@@ -375,10 +178,6 @@ exports.getUsers = async (req, res) => {
 
 
 
-
-
-
-// const Profile = require("../models/Profile");
 
 
 
@@ -429,21 +228,6 @@ exports.Profile = async (req, res) => {
 
 
 
-// exports.getUserById = async(req,res)=>{
-// try {
-//     const { id } = req.body;
-//   console.log(id,"sssssssssssssssssssssssssssssssssss")
-//   if(!id||!id.match(/^[0-9a-fA-F]{24}$/))
-//     return res.status(400).json({message:"invalid user id"})
-
-//   const User = await User.findById(id).select('password')
-//   if(!User) res.status(500).json({message:"user not found"})
-//     return res.status(200).json(User)
-// } catch (error) {
-//   console.error('getUserById error',error)
-//   return res.status(500).json({massege:"server error"})
-// }
-// }
 
 
 
@@ -515,25 +299,6 @@ exports.getUserById = async (req, res) => {
 
 
 
-// exports.image = async (req, res) => {
-//   try {
-//     const userId = req.user.id; // decoded from verifyToken middleware
-
-//     const profile = await Profile.findOne({ user: userId });
-
-//     if (!profile) {
-//       return res.status(404).json({ message: "Profile not found" });
-//     }
-
-//     res.status(200).json({
-//       message: "User profile fetched successfully",
-//       data: profile,
-//     });
-//   } catch (err) {
-//     console.error("Error fetching profile:", err);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
 
 
 
@@ -581,37 +346,6 @@ exports.logout = async (req, res) => {
 
 
 
-
-// exports.updateProfile = async (req, res) => {
-//   try {
-//     const profileId = req.params.id;
-//         const image = req.file ? req.file.filename : null; // ✅ save only filename
-
-//     const userId = req.user.id; // logged-in user ID
-//     const { user, _id, ...updateData  } = req.body;
-    
-
-
-//     const updatedProfile = await Profile.findOneAndUpdate(
-//       { _id: profileId, user: userId },
-//       updateData,                  // only update allowed fields
-//       { new: true, runValidators: true }
-//     );
-//     console.log(updatedProfile, " ")
-//     if (!updatedProfile) {
-//       return res.status(404).json({ message: "Profile not found or unauthorized" });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       data: updatedProfile,
-//       message: "Profile updated successfully",
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 
 
@@ -801,222 +535,6 @@ exports.resetPassword = async (req, res) => {
 
 
 
-
-// // 🟢 Check In / Check Out API
-// exports.checkInOut = async (req, res) => {
-//   try {
-//     const { userId, action } = req.body;
-
-//     if (!userId || !action)
-//       return res.status(400).json({ message: "Missing required fields" });
-
-//     const today = new Date().toLocaleDateString("en-IN");
-//     let attendance = await Attendance.findOne({ user: userId, date: today });
-
-//     if (!attendance) {
-//       attendance = new Attendance({
-//         user: userId,
-//         date: today,
-//       });
-//     }
-
-//     if (action === "check_in") {
-//       if (attendance.checkIn)
-//         return res.status(400).json({ message: "Already checked in today" });
-
-//       attendance.checkIn = new Date();
-//       await attendance.save();
-//       return res.status(200).json({ message: "✅ Checked in", checkIn: attendance.checkIn });
-//     }
-
-//     if (action === "check_out") {
-//       if (!attendance.checkIn)
-//         return res.status(400).json({ message: "Please check in first" });
-
-//       if (attendance.checkOut)
-//         return res.status(400).json({ message: "Already checked out today" });
-
-//       attendance.checkOut = new Date();
-//       await attendance.save();
-//       return res.status(200).json({ message: "👋 Checked out", checkOut: attendance.checkOut });
-//     }
-
-//     res.status(400).json({ message: "Invalid action" });
-//   } catch (error) {
-//     console.error("Attendance Error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
-
-
-
-
-
-// exports.checkInOut = async (req, res) => {
-//   try {
-//     // 🔑 Verify Token
-//     const token = req.headers.authorization?.split(" ")[1];
-//     if (!token) return res.status(401).json({ message: "Missing token" });
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const user = await User.findById(decoded.id);
-//     if (!user) return res.status(404).json({ message: "User not found" });
-
-//     const { action } = req.body;
-//     if (!action) return res.status(400).json({ message: "Missing action" });
-
-//     const today = new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd
-//     const currentTime = new Date().toLocaleTimeString("en-IN", { hour12: true });
-
-//     // 🧩 Check if there's already an open record (CheckOutTime = null)
-//     const openRecord = await Attendance.findOne({
-//       user: user._id,
-//       date: today,
-//       CheckOutTime: null
-//     });
-
-//     // 🔒 Condition: if user is already checked in
-//     if (action === "check_in") {
-//       if (openRecord) {
-//         return res.status(400).json({
-//           message: "⚠️ You are already checked in! Please check out first.",
-//           existing: {
-//             date: openRecord.date,
-//             CheckInTime: openRecord.CheckInTime
-//           }
-//         });
-//       }
-
-//       // ✅ Create new record only if not already checked in
-//       const newRecord = new Attendance({
-//         user: user._id,
-//         User: user.name,
-//         date: today,
-//         Status: "check_in",
-//         CheckInTime: currentTime,
-//         CheckOutTime: null
-//       });
-
-//       await newRecord.save();
-//       return res.status(200).json({
-//         message: "✅ Checked in successfully",
-//         date: today,
-//         CheckInTime: currentTime
-//       });
-//     }
-
-//     // 🕓 Check-out logic
-//     else if (action === "check_out") {
-//       if (!openRecord) {
-//         return res.status(400).json({
-//           message: "⚠️ You are not checked in today!"
-//         });
-//       }
-
-//       openRecord.CheckOutTime = currentTime;
-//       openRecord.Status = "check_out";
-//       await openRecord.save();
-
-//       return res.status(200).json({
-//         message: "👋 Checked out successfully",
-//         date: today,
-//         CheckInTime: openRecord.CheckInTime,
-//         CheckOutTime: currentTime
-//       });
-//     }
-
-//     // Invalid action
-//     else {
-//       return res.status(400).json({ message: "Invalid action" });
-//     }
-
-//   } catch (error) {
-//     console.error("Attendance Error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
-
-
-
-
-
-// exports.checkInOut = async (req, res) => {
-//   try {
-//     // 🔑 Verify token
-//     const token = req.headers.authorization?.split(" ")[1];
-//     if (!token) return res.status(401).json({ message: "Missing token" });
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const user = await User.findById(decoded.id);
-//     if (!user) return res.status(404).json({ message: "User not found" });
-
-//     const { action } = req.body;
-//     if (!action) return res.status(400).json({ message: "Missing action" });
-
-//     const today = new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd
-//     const currentTime = new Date().toLocaleTimeString("en-IN", { hour12: true });
-
-//     // 🧩 Find existing record for today
-//     let attendance = await Attendance.findOne({ user: user._id, date: today }).sort({ _id: -1 });
-
-//     if (action === "check_in") {
-//       if (attendance && !attendance.CheckOutTime) {
-//         // ✅ Already checked in, update the existing record's CheckInTime
-//         attendance.CheckInTime = currentTime; // replace old time
-//         await attendance.save();
-//         return res.status(200).json({
-//           message: "⚠️ Already checked in. CheckIn time updated.",
-//           date: today,
-//           CheckInTime: attendance.CheckInTime,
-//           CheckOutTime: attendance.CheckOutTime || "-"
-//         });
-//       }
-
-//       // ✅ No open record → create new
-//       attendance = new Attendance({
-//         user: user._id,
-//         userName: user.name,
-//         date: today,
-//         Status: "check_in",
-//         CheckInTime: currentTime,
-//         CheckOutTime: null
-//       });
-
-//       await attendance.save();
-//       return res.status(200).json({
-//         message: "✅ Checked in successfully",
-//         date: today,
-//         CheckInTime: currentTime,
-//         CheckOutTime: "-"
-//       });
-//     }
-
-//     else if (action === "check_out") {
-//       if (!attendance || attendance.CheckOutTime) {
-//         return res.status(400).json({ message: "⚠️ No active check-in found to check out." });
-//       }
-
-//       attendance.CheckOutTime = currentTime;
-//       attendance.Status = "check_out";
-//       await attendance.save();
-
-//       return res.status(200).json({
-//         message: "👋 Checked out successfully",
-//         date: today,
-//         CheckInTime: attendance.CheckInTime,
-//         CheckOutTime: attendance.CheckOutTime
-//       });
-//     }
-
-//     else {
-//       return res.status(400).json({ message: "Invalid action" });
-//     }
-
-//   } catch (error) {
-//     console.error("Attendance Error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 
 
   
@@ -1369,38 +887,6 @@ exports.getScreenTimeadmin = async (req, res) => {
 
 
 
-// controllers/leaveController.js
-// controllers/leaveController.js
-// controllers/leaveController.js
-
-
-
-
-// exports.leaveRequest = async (req, res) => {
-//   try {
-//     const { startDate, endDate, reason } = req.body;
-//     const user = req.user;
-
-//     if (!startDate || !endDate) {
-//       return res.status(400).json({ message: "startDate and endDate are required" });
-//     }
-
-//     const leave = new LeaveRequest({
-//       user: user._id,
-//       startDate,
-//       endDate,
-//       reason,
-//       status: ""
-//     });
-
-//     await leave.save();
-//     res.status(201).json({ message: "✅ Leave request submitted", data: leave });
-//   } catch (err) {
-//     res.status(500).json({ message: "Failed to apply leave", error: err.message });
-//   }
-// };
-
-
 
 
 
@@ -1442,73 +928,6 @@ exports.leaveRequest = async (req, res) => {
 
 
 
-// exports.updateLeaveStatus = async (req, res) => {
-//   try {
-//     const token = req.headers.authorization?.split(" ")[1];
-//     if (!token) return res.status(401).json({ message: "Missing token" });
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-//     // Only admin can approve/reject (Optional)
-//     const admin = await User.findById(decoded.id);
-//     if (!admin || admin.role !== "admin") {
-//       return res.status(403).json({ message: "Only admin can update leave status" });
-//     }
-
-//     const { leaveId, action, reason } = req.body;
-
-//     if (!leaveId || !action)
-//       return res.status(400).json({ message: "leaveId and action are required" });
-
-//     const leave = await Leave.findById(leaveId).populate("user", "name email");
-//     if (!leave) return res.status(404).json({ message: "Leave not found" });
-
-//     // ------------------------------------------------------------
-//     // APPROVE
-//     // ------------------------------------------------------------
-//     if (action === "approve") {
-//       leave.status = "Approved";
-//       await leave.save();
-
-//       await sendEmail({
-//         to: leave.user.email,
-//         subject: "Leave Approved ✅",
-//         text: `Hello ${leave.user.name},\n\nYour leave from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()} has been approved.\n\nRegards,\nAdmin`
-//       });
-
-//       return res.status(200).json({
-//         message: "Leave approved successfully",
-//         leave
-//       });
-//     }
-
-//     // ------------------------------------------------------------
-//     // REJECT
-//     // ------------------------------------------------------------
-//     if (action === "reject") {
-//       leave.status = "Rejected";
-//       leave.reason = reason || leave.reason;
-//       await leave.save();
-
-//       await sendEmail({
-//         to: leave.user.email,
-//         subject: "Leave Rejected ❌",
-//         text: `Hello ${leave.user.name},\n\nYour leave has been rejected.\nReason: ${reason || 'Not provided'}\n\nRegards,\nAdmin`
-//       });
-
-//       return res.status(200).json({
-//         message: "Leave rejected successfully",
-//         leave
-//       });
-//     }
-
-//     return res.status(400).json({ message: "Invalid action" });
-
-//   } catch (error) {
-//     console.error("Leave Status Update Error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 
 // APPROVE LEAVE
 
@@ -1547,56 +966,6 @@ exports.updateLeaveStatus = async (req, res) => {
 
 
 
-
-// exports.approveLeave = async (req, res) => {
-//   try {
-//     const { id } = req.body; // leave ID
-
-//     const leave = await Leave.findByIdAndUpdate(
-//       id,
-//       { status: "approved" },
-//       { new: true }
-//     );
-
-//     if (!leave) {
-//       return res.status(404).json({ message: "Leave not found" });
-//     }
-
-//     res.json({
-//       message: "Leave Approved Successfully",
-//       leave,
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Error approving leave" });
-//   }
-// };
-
-// // REJECT LEAVE
-// exports.rejectLeave = async (req, res) => {
-//   try {
-//     const { id } = req.body; // leave ID
-
-//     const leave = await Leave.findByIdAndUpdate(
-//       id,
-//       { status: "rejected" },
-//       { new: true }
-//     );
-
-//     if (!leave) {
-//       return res.status(404).json({ message: "Leave not found" });
-//     }
-
-//     res.json({
-//       message: "Leave Rejected Successfully",
-//       leave,
-//     });
-    
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Error rejecting leave" });
-//   }
-// };
 
 
 
@@ -1832,57 +1201,6 @@ exports.getMyAttendanceDetails = async (req, res) => {
 
 
 
-// exports.getTotalUsers = async (req, res) => {
-//   try {
-//     console.log("➡️ Total Users API Hit");
-
-//     // Fetch all users with name and email
-//     const users = await User.find({}, { name: 1, email: 1, _id: 0 });
-
-//     console.log("Total Users:", users.length);
-
-//     res.status(200).json({
-//       totalUsers: users.length,
-//       users, // array of user objects with name & email
-//     });
-//   } catch (error) {
-//     console.log("Error:", error);
-//     res.status(500).json({
-//       message: "Failed to fetch total users",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-
-// exports.getActiveUsers = async (req, res) => {
-//   try {
-//     const today = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
-
-//     const activeAttendances = await Attendance.find({
-//       date: today, // string match
-//       CheckInTime: { $ne: null },
-//       CheckOutTime: null
-//     }).populate("user", "name email");
-
-//     const users = activeAttendances.map(a => ({
-//       id: a.user._id,
-//       name: a.user.name,
-//       email: a.user.email
-//     }));
-
-//     res.json({
-//       totalActive: users.length,
-//       users
-//     });
-
-//   } catch (error) {
-//     console.error("Active Users Error:", error);
-//     res.status(500).json({ message: "Failed to fetch active users", error: error.message });
-//   }
-// };
-
 
 // =====================
 // Get Active Users
@@ -1924,112 +1242,6 @@ exports.getActiveUsers = async (req, res) => {
 
 
 
-
-// exports.getTodayActivity = async (req, res) => {
-//   try {
-//     const token = req.headers.authorization?.split(" ")[1];
-//     if (!token) return res.status(401).json({ message: "Missing token" });
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const user = await User.findById(decoded.id).select("name email");
-//     if (!user) return res.status(404).json({ message: "User not found" });
-
-//     const today = new Date().toLocaleDateString("en-CA");
-
-//     // ✅ fetch today's attendance (latest if multiple records exist)
-//     const attendance = await Attendance.findOne({ user: user._id, date: today })
-//       .sort({ _id: -1 })
-//       .select("CheckInTime CheckOutTime date");
-
-//     if (!attendance) {
-//       return res.status(404).json({ message: "No activity found for today" });
-//     }
-
-//     // convert "11:05:01 am" → "11:05:01"
-//     const convertTo24Hour = (timeString) => {
-//       if (!timeString) return null;
-//       const [time, modifier] = timeString.split(" ");
-//       let [hours, minutes, seconds] = time.split(":");
-//       hours = parseInt(hours);
-//       if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
-//       if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
-//       return `${hours.toString().padStart(2, "0")}:${minutes}:${seconds}`;
-//     };
-
-//     // calculate working hours
-//     let workingHours = "00:00:00";
-//     if (attendance.CheckInTime && attendance.CheckOutTime) {
-//       const checkIn24 = convertTo24Hour(attendance.CheckInTime);
-//       const checkOut24 = convertTo24Hour(attendance.CheckOutTime);
-//       const diff = new Date(`2000-01-01T${checkOut24}`) - new Date(`2000-01-01T${checkIn24}`);
-//       const h = Math.floor(diff / 3600000);
-//       const m = Math.floor((diff % 3600000) / 60000);
-//       const s = Math.floor((diff % 60000) / 1000);
-//       workingHours = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
-//     }
-
-//     res.status(200).json({
-//       name: user.name,
-//       email: user.email,
-//       checkInTime: attendance.CheckInTime || "-",
-//       checkOutTime: attendance.CheckOutTime || "-",
-//       status: attendance.CheckInTime ? "Present" : "Absent",
-//       workingHours,
-//     });
-
-//   } catch (error) {
-//     console.error("Get Attendance Error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
-
-
-
-// controllers/leaveController.js
-// exports.getLeaveRequests = async (req, res) => {
-//   try {
-//     if (!req.user || !req.user.isAdmin) {
-//       return res.status(403).json({ message: "Access denied" });
-//     }
-
-//     // Fetch all leaves and populate user info
-//     const leaves = await Leave.find()
-//       .populate("user", "name email")
-//       .sort({ startDate: -1 });
-
-//     // Group by user email to get unique users
-//     const uniqueUsersMap = new Map();
-
-//     leaves.forEach((l) => {
-//       if (!uniqueUsersMap.has(l.user.email)) {
-//         uniqueUsersMap.set(l.user.email, {
-//           name: l.user.name,
-//           email: l.user.email,
-//           startDate: l.startDate,
-//           endDate: l.endDate,
-//           leavetype: l.leavetype,
-//           reason: l.reason,
-//           status: l.status,
-//         });
-//       }
-//     });
-
-//     const uniqueLeaves = Array.from(uniqueUsersMap.values());
-
-//     res.status(200).json({
-//       message: "✅ Unique user leave requests fetched successfully",
-//       totalUsers: uniqueLeaves.length,
-//       leaves: uniqueLeaves,
-//     });
-
-//   } catch (err) {
-//     console.error("Get Unique User Leaves Error:", err);
-//     res.status(500).json({
-//       message: "Failed to fetch unique leave requests",
-//       error: err.message,
-//     });
-//   }
-// };
 
 // Get all leave requests (role check removed)
 exports.getLeaveRequests = async (req, res) => {
@@ -2279,27 +1491,6 @@ exports.MyAttendanceSummary = async (req, res) => {
 
 
 
-// exports.createLeave = async (req, res) => {
-//   try {
-//     // Temporary testing only (replace with actual logged-in user later)
-//     const user = await User.findOne(); // first user from DB
-//     if (!user) return res.status(400).json({ message: "No user found for testing" });
-
-//     const leave = new Empleave({
-//       user: user._id,  // manually set for testing
-//       PaidLeave: req.body.PaidLeave || 0,
-//       SickLeave: req.body.SickLeave || 0,
-//       UnpaidLeave: req.body.UnpaidLeave || 0,
-//       FestivalLeave: req.body.FestivalLeave || 0,
-//       leavetype: req.body.leavetype,
-//     });
-
-//     const savedLeave = await leave.save();
-//     res.status(201).json(savedLeave);
-//   } catch (err) {
-//     res.status(400).json({ message: err.message });
-//   }
-// };
 
 
 // ✅ CREATE LEAVE
@@ -2325,95 +1516,6 @@ exports.createLeave = async (req, res) => {
 
 
 
-
-// exports.createLeave = async (req, res) => {
-//   try {
-//     // Backend decides user (for example first user or some logic)
-//     const user = await User.findOne(); // for testing or automated leave creation
-//     if (!user) return res.status(400).json({ message: "No user found" });
-
-//     // Backend decides leave type and counts
-//     const leave = new Empleave({
-//       user: user._id,
-//       PaidLeave: 2,           // backend sets value
-//       SickLeave: 1,
-//       UnpaidLeave: 0,
-//       FestivalLeave: 1,
-//       leavetype: "CasualLeave", // backend decides
-//       admin: user.role === "admin" ? user._id : undefined,
-//     });
-
-//     const savedLeave = await leave.save();
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Leave created by backend successfully",
-//       data: savedLeave,
-//     });
-//   } catch (err) {
-//     console.error("createLeave error:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-
-// exports.createLeave = async (req, res) => {
-//   try {
-//     // Use logged-in user, fallback to first user for testing
-//     const user = req.user || (await User.findOne());
-//     if (!user) return res.status(400).json({ message: "No user found" });
-
-//     // Validate leavetype
-//     const { leavetype, PaidLeave = 0, SickLeave = 0, UnpaidLeave = 0, FestivalLeave = 0 } = req.body;
-//     if (!leavetype) {
-//       return res.status(400).json({ message: "leavetype is required" });
-//     }
-
-//     const leave = new Empleave({
-//       user: user._id,
-//       PaidLeave,
-//       SickLeave,
-//       UnpaidLeave,
-//       FestivalLeave,
-//       leavetype,
-//       admin: req.user?.role === "admin" ? req.user._id : undefined,
-//     });
-
-//     const savedLeave = await leave.save();
-//     res.status(201).json({
-//       success: true,
-//       message: "Leave created successfully",
-//       data: savedLeave,
-//     });
-//   } catch (err) {
-//     console.error("createLeave error:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-
-// exports.updateLeave = async (req, res) => {
-//   try {
-//     const leaveId = req.params.leaveId;
-
-//     // Check if leave exists
-//     const leave = await Empleave.findById(leaveId);
-//     if (!leave) {
-//       return res.status(404).json({ message: "Leave not found" });
-//     }
-
-//     // Update only the provided fields
-//     Object.keys(req.body).forEach((key) => {
-//       leave[key] = req.body[key];
-//     });
-
-//     const updatedLeave = await leave.save();
-
-//     res.status(200).json(updatedLeave);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 
 
 exports.updateLeave = async (req, res) => {
@@ -2513,40 +1615,6 @@ exports.getLeaves = async (req, res) => {
 
 
 
-// Approve a leave request
-
-// exports.approveLeave = async (req, res) => {
-//   try {
-//     const { id } = req.body; // leave _id
-
-//     if (!id) {
-//       return res.status(400).json({ message: "Leave ID is required" });
-//     }
-
-//     // Find leave by _id only (not user-specific)
-// // Agar aap Leave model ka use kar rahe ho
-
-// const leave = await Leave.findById(id).populate("user", "name email");
-//     if (!leave) {
-//       return res.status(404).json({ message: "Leave not found" });
-//     }
-// leave.leavetype = leave.leavetype || "PaidLeave"; // agar missing ho toh default
-
-//     leave.status = "approved";
-//     const updatedLeave = await leave.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Leave approved for ${leave.user.name} (${leave.user.email})`,
-//       data: updatedLeave
-//     });
-
-//   } catch (err) {
-//     console.error("approveLeave error:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-// controllers/leaveController.js
 
 exports.approveLeave = async (req, res) => {
   try {
@@ -2573,122 +1641,7 @@ exports.approveLeave = async (req, res) => {
 };
 
 
-// exports.rejectLeave = async (req, res) => {
-//   try {
-//     const { id } = req.body;
 
-//     if (!id) {
-//       return res.status(400).json({ message: "Leave ID is required" });
-//     }
-
-//     const leave = await Leave.findById(id).populate("user", "name email");
-//     if (!leave) {
-//       return res.status(404).json({ message: "Leave not found" });
-//     }
-
-//     // Ensure leavetype exists
-//     leave.leavetype = leave.leavetype || "PaidLeave";
-
-//     // Set correct status enum
-//     leave.status = "Rejected";
-//     leave.admin = req.user._id; // optional: save who rejected
-
-//     const updatedLeave = await leave.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
-//       data: updatedLeave
-//     });
-
-//   } catch (err) {
-//     console.error("rejectLeave error:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// exports.rejectLeave = async (req, res) => {
-//   try {
-//     const { id, reason } = req.body;
-
-//     if (!id) return res.status(400).json({ message: "Leave ID is required" });
-//     if (!reason || reason.trim() === "")
-//       return res.status(400).json({ message: "Rejection reason is required" });
-
-//     const leave = await Leave.findById(id).populate("user", "name email");
-//     if (!leave) return res.status(404).json({ message: "Leave not found" });
-
-//     leave.status = "Rejected";
-//     leave.rejectionReason = reason;
-//     leave.admin = req.user._id;
-
-//     const updatedLeave = await leave.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
-//       data: updatedLeave,
-//     });
-//   } catch (err) {
-//     console.error("rejectLeave error:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-
-
-
-
-
-
-// exports.rejectLeave = async (req, res) => {
-//   try {
-//     const { id, reason } = req.body; // <-- destructure id and reason correctly
-
-//     if (!id) {
-//       return res.status(400).json({ message: "Leave ID is required" });
-//     }
-
-//     if (!reason || reason.trim() === "") {
-//       return res.status(400).json({ message: "Rejection reason is required" });
-//     }
-
-//     const leave = await Leave.findById(id).populate("user", "name email"); // <-- pass only id
-//     if (!leave) {
-//       return res.status(404).json({ message: "Leave not found" });
-//     }
-
-//     // Set status and rejection reason
-//     leave.status = "Rejected";
-//     leave.rejectionReason = reason; // save reason in schema
-//     leave.admin = req.user._id;
-
-//     const updatedLeave = await leave.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Leave rejected for ${leave.user.name} (${leave.user.email})`,
-//       data: updatedLeave
-//     });
-//   } catch (err) {
-//     console.error("rejectLeave error:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 
 exports.rejectLeave = async (req, res) => {
   try {
