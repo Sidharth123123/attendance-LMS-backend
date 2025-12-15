@@ -1,18 +1,4 @@
-// const mongoose = require('mongoose');
-// const { string } = require('i/lib/util');
 
-// const LeaveSchema = new mongoose.Schema({
-//   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-//   startDate: { type: String, required: true },
-//   endDate: { type: String, required: true },
-//   reason: { type: String },
-// leavetype: {
-//   type: String,
-//   enum: ["Casual", "Sick", "Festival", "Other"],
-//   required: true
-// }}, );
-
-// module.exports = mongoose.model('Leave', LeaveSchema);
 
 const mongoose = require("mongoose");
 

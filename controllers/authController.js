@@ -1401,31 +1401,31 @@ exports.MyAttendanceSummary = async (req, res) => {
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Get all attendance records of this user
     const attendances = await Attendance.find({ user: user._id }).sort({ date: 1 });
 
-    // Get all dates between first and last attendance
     const dates = [];
     if (attendances.length > 0) {
       const startDate = new Date(attendances[0].date);
       const endDate = new Date(attendances[attendances.length - 1].date);
 
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        dates.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+        dates.push(new Date(d).toISOString().split("T")[0]);
       }
     }
 
-    // Helper to parse time
     const parseTime = (timeStr) => {
       if (!timeStr) return null;
       let str = timeStr.trim();
-      if (!str.includes(" ")) str = str.slice(0, -2) + " " + str.slice(-2); // 10:37:01am -> 10:37:01 am
+      if (!str.includes(" ")) str = str.slice(0, -2) + " " + str.slice(-2);
       const [time, modifier] = str.split(" ");
       let [hours, minutes, seconds] = time.split(":").map(Number);
       if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
       if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
       return { hours, minutes, seconds };
     };
+
+    let totalPresent = 0;
+    let totalAbsent = 0;
 
     const summary = dates.map((dateStr) => {
       const dayRecords = attendances.filter((a) => a.date === dateStr);
@@ -1437,6 +1437,7 @@ exports.MyAttendanceSummary = async (req, res) => {
 
       if (dayRecords.length > 0) {
         status = "Present";
+        totalPresent += 1;
 
         const checkIns = dayRecords.map((r) => r.CheckInTime).filter(Boolean).sort();
         const checkOuts = dayRecords.map((r) => r.CheckOutTime).filter(Boolean).sort();
@@ -1444,7 +1445,6 @@ exports.MyAttendanceSummary = async (req, res) => {
         firstCheckIn = checkIns[0] || "-";
         lastCheckOut = checkOuts[checkOuts.length - 1] || "-";
 
-        // Calculate working hours
         let totalHours = 0;
         dayRecords.forEach((r) => {
           if (r.CheckInTime && r.CheckOutTime) {
@@ -1454,7 +1454,7 @@ exports.MyAttendanceSummary = async (req, res) => {
               const startDate = new Date(1970, 0, 1, start.hours, start.minutes, start.seconds);
               const endDate = new Date(1970, 0, 1, end.hours, end.minutes, end.seconds);
               let diffMs = endDate - startDate;
-              if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000; // midnight cross
+              if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
               totalHours += diffMs;
             }
           }
@@ -1464,6 +1464,8 @@ exports.MyAttendanceSummary = async (req, res) => {
         const minutes = Math.floor((totalHours / 1000 / 60) % 60);
         const seconds = Math.floor((totalHours / 1000) % 60);
         workingHours = `${hours}h ${minutes}m ${seconds}s`;
+      } else {
+        totalAbsent += 1;
       }
 
       return {
@@ -1479,6 +1481,8 @@ exports.MyAttendanceSummary = async (req, res) => {
       username: user.name,
       email: user.email,
       totalDays: summary.length,
+      totalPresentDays: totalPresent,
+      totalAbsentDays: totalAbsent,
       summary,
     });
   } catch (error) {
@@ -1486,7 +1490,6 @@ exports.MyAttendanceSummary = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 
 
